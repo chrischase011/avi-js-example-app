@@ -7,7 +7,6 @@ const env = v.object({
     v.pipe(v.string(), v.regex(/^\d+$/, 'PORT must be a number'), v.transform(Number)),
     '3000',
   ),
-  DATABASE_URL: v.optional(v.string(), 'file:./dev.db'),
   // Signs session tokens. At least 32 characters.
   TOKEN_SECRET: v.pipe(v.string(), v.minLength(32, 'TOKEN_SECRET must be at least 32 characters')),
   UPLOAD_DIR: v.optional(v.string(), 'uploads'),

@@ -1,5 +1,5 @@
 import { HttpError, type Context, type Guard } from '@avijs/core';
-import { PrismaClient } from '../../generated/prisma/client.js';
+import { Db } from '../../common/database.module.js';
 
 export type TeamRole = 'owner' | 'member';
 
@@ -14,14 +14,12 @@ declare module '@avijs/core' {
  * Runs before validation, so it parses the id itself. Use after AuthGuard.
  */
 export class TeamMemberGuard {
-  constructor(private readonly db: PrismaClient) {}
+  constructor(private readonly db: Db) {}
 
-  async canActivate(ctx: Context): Promise<boolean> {
+  canActivate(ctx: Context): boolean {
     const teamId = Number(ctx.params['teamId']);
     if (!Number.isInteger(teamId)) throw new HttpError(404, 'Team not found');
-    const membership = await this.db.membership.findUnique({
-      where: { userId_teamId: { userId: ctx.need('user').id, teamId } },
-    });
+    const membership = this.db.membership(ctx.need('user').id, teamId);
     // Not a member looks the same as no such team, so ids do not reveal which teams exist.
     if (!membership) throw new HttpError(404, 'Team not found');
     ctx.state.team = { id: teamId, role: membership.role as TeamRole };

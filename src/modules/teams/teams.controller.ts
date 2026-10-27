@@ -53,8 +53,8 @@ export class TeamsController {
   }
 
   @Post('/', { schema: create })
-  async create(ctx: RouteContext<typeof create>) {
-    return reply(await this.teams.create(ctx.need('user').id, ctx.input.body.name), {
+  create(ctx: RouteContext<typeof create>) {
+    return reply(this.teams.create(ctx.need('user').id, ctx.input.body.name), {
       status: 201,
     });
   }
@@ -67,9 +67,9 @@ export class TeamsController {
 
   @Post('/:teamId/members', { schema: addMember })
   @UseGuards(TeamMemberGuard, requireTeamRole('owner'))
-  async addMember(ctx: RouteContext<typeof addMember>) {
+  addMember(ctx: RouteContext<typeof addMember>) {
     const { email, role } = ctx.input.body;
-    return reply(await this.teams.addMember(ctx.input.params.teamId, email, role), { status: 201 });
+    return reply(this.teams.addMember(ctx.input.params.teamId, email, role), { status: 201 });
   }
 
   @Get('/:teamId/projects', { schema: projects })
@@ -80,8 +80,8 @@ export class TeamsController {
 
   @Post('/:teamId/projects', { schema: createProject })
   @UseGuards(TeamMemberGuard)
-  async createProject(ctx: RouteContext<typeof createProject>) {
-    const project = await this.teams.createProject(ctx.input.params.teamId, ctx.input.body.name);
+  createProject(ctx: RouteContext<typeof createProject>) {
+    const project = this.teams.createProject(ctx.input.params.teamId, ctx.input.body.name);
     return reply(project, { status: 201 });
   }
 }

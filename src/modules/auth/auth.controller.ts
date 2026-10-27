@@ -24,8 +24,8 @@ export class AuthController {
   constructor(private readonly auth: AuthService) {}
 
   @Post('/register', { schema: register })
-  async register(ctx: RouteContext<typeof register>) {
-    return reply(await this.auth.register(ctx.input.body), { status: 201 });
+  register(ctx: RouteContext<typeof register>) {
+    return reply(this.auth.register(ctx.input.body), { status: 201 });
   }
 
   @Post('/login', { schema: login })

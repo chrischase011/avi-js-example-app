@@ -56,9 +56,9 @@ export class ProjectTasksController {
   }
 
   @Post('/tasks', { schema: create })
-  async create(ctx: RouteContext<typeof create>) {
+  create(ctx: RouteContext<typeof create>) {
     const teamId = ctx.need('project').teamId;
-    const task = await this.tasks.create(ctx.input.params.projectId, teamId, ctx.input.body);
+    const task = this.tasks.create(ctx.input.params.projectId, teamId, ctx.input.body);
     return reply(task, { status: 201 });
   }
 
@@ -87,7 +87,7 @@ export class TasksController {
   }
 
   @Delete('', { schema: remove })
-  async remove(ctx: RouteContext<typeof remove>) {
-    await this.tasks.remove(ctx.input.params.taskId);
+  remove(ctx: RouteContext<typeof remove>) {
+    this.tasks.remove(ctx.input.params.taskId);
   }
 }

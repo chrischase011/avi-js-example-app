@@ -1,15 +1,20 @@
-# Tasks: an Avi.js example app
+# Tasks: an Avi.js example app (in-memory, for StackBlitz)
 
-A team task tracker built on Avi.js 1.0.0-rc.4. It started on 0.5.3 as a test to find friction
-before 1.0; what it found is in [FRICTION.md](FRICTION.md).
+This branch is the [main branch's](https://github.com/chrischase011/avi-js-example-app) team task
+tracker with its data in memory instead of Prisma and SQLite, whose native engines cannot run in
+StackBlitz. [Open it on StackBlitz](https://stackblitz.com/github/chrischase011/avi-js-example-app/tree/stackblitz).
 
 - **API** (`src/`): sign-up and sign-in with signed tokens, teams with owner and member roles,
   projects, tasks with filters and paging, file attachments, live task updates (SSE), security
-  headers, CORS, OpenAPI at `/openapi.json`, one process per core with `cluster()`.
-- **Worker** (`src/worker.ts`): sends queued emails (logged) with `runWorker()`.
+  headers, CORS, OpenAPI at `/openapi.json`.
+- **Emails** (`src/outbox.ts`): queued emails are sent (logged) every second, in the API process.
 - **Frontend** (`web/`): React + Vite, calling the API through `@avijs/client` with the generated
-  `Api` type.
-- **Database**: Prisma 7 with SQLite.
+  `Api` type. Vite forwards `/api` to the API.
+- **Data** (`src/common/database.module.ts`): an in-memory `Db` provider. It is empty on every
+  start.
+
+Differences from main: one process (main runs one per core with `cluster()`, and the email worker
+on its own with `runWorker()`), since processes cannot share memory.
 
 No class has `static inject`: `avi dev` and `avi build` infer the dependency lists from
 constructors into `src/inject.gen.ts`.
@@ -17,18 +22,18 @@ constructors into `src/inject.gen.ts`.
 ## Running it
 
 ```sh
-npm install
-cp .env.example .env        # then set TOKEN_SECRET (32 or more characters)
-npx prisma migrate deploy   # creates dev.db
-npx prisma generate
-npm run build
-PORT=3100 npm start         # the API, on every core
-npm run worker              # in another terminal: sends queued emails
-
-cd web
-npm install
-npm run dev                 # http://localhost:5173
+npm install && npm run dev:all   # the API on :3000, the React app on :5173
 ```
 
-`npm run dev` rebuilds on save and keeps `src/inject.gen.ts` and `src/api.gen.ts` up to date.
-`npm test` runs the end-to-end tests against a fresh `test.db`.
+`dev:all` creates `.env` from `.env.example` when there is none (change `TOKEN_SECRET` outside a
+demo) and installs `web/`. `npm run dev` runs the API alone; `npm test` runs the end-to-end tests.
+
+## Embedding
+
+```html
+<iframe
+  src="https://stackblitz.com/github/chrischase011/avi-js-example-app/tree/stackblitz?embed=1&file=src/modules/tasks/tasks.service.ts"
+  style="width: 100%; height: 600px; border: 0"
+  title="Avi.js example app"
+></iframe>
+```

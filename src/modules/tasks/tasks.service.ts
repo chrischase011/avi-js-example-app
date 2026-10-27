@@ -1,5 +1,5 @@
 import { HttpError, Injectable } from '@avijs/core';
-import { PrismaClient } from '../../generated/prisma/client.js';
+import { Db, type Task } from '../../common/database.module.js';
 import { TaskEvents } from './task-events.js';
 import type { CreateTaskDto, UpdateTaskDto } from './tasks.dto.js';
 
@@ -10,91 +10,89 @@ interface ListOptions {
   offset: number;
 }
 
+const byStatusThenAge = (a: Task, b: Task) =>
+  a.status.localeCompare(b.status) || a.createdAt.getTime() - b.createdAt.getTime() || a.id - b.id;
+
 @Injectable()
 export class TasksService {
   constructor(
-    private readonly db: PrismaClient,
+    private readonly db: Db,
     private readonly events: TaskEvents,
   ) {}
 
-  async list(projectId: number, options: ListOptions) {
-    const where = {
-      projectId,
-      status: options.status,
-      assigneeId: options.assigneeId,
-    };
-    const [items, total] = await Promise.all([
-      this.db.task.findMany({
-        where,
-        orderBy: [{ status: 'asc' }, { createdAt: 'asc' }],
-        take: options.limit,
-        skip: options.offset,
-      }),
-      this.db.task.count({ where }),
-    ]);
-    return { items, total };
+  list(projectId: number, options: ListOptions) {
+    const matching = this.db.tasks
+      .filter(
+        (t) =>
+          t.projectId === projectId &&
+          (options.status === undefined || t.status === options.status) &&
+          (options.assigneeId === undefined || t.assigneeId === options.assigneeId),
+      )
+      .sort(byStatusThenAge);
+    const items = matching.slice(options.offset, options.offset + options.limit);
+    return { items, total: matching.length };
   }
 
-  async create(projectId: number, teamId: number, input: CreateTaskDto) {
-    if (input.assigneeId != null) await this.#checkMember(teamId, input.assigneeId);
-    const task = await this.db.task.create({
-      data: {
-        projectId,
-        title: input.title,
-        description: input.description ?? null,
-        dueDate: input.dueDate ? new Date(input.dueDate) : null,
-        assigneeId: input.assigneeId ?? null,
-      },
+  create(projectId: number, teamId: number, input: CreateTaskDto) {
+    if (input.assigneeId != null) this.#checkMember(teamId, input.assigneeId);
+    const now = new Date();
+    const task = this.db.tasks.insert({
+      projectId,
+      title: input.title,
+      description: input.description ?? null,
+      status: 'todo',
+      dueDate: input.dueDate ? new Date(input.dueDate) : null,
+      assigneeId: input.assigneeId ?? null,
+      createdAt: now,
+      updatedAt: now,
     });
-    if (task.assigneeId !== null) await this.#notifyAssignee(task.id);
+    if (task.assigneeId !== null) this.#notifyAssignee(task);
     this.events.publish({ type: 'created', projectId, taskId: task.id });
     return task;
   }
 
-  async update(taskId: number, teamId: number, input: UpdateTaskDto) {
-    if (input.assigneeId != null) await this.#checkMember(teamId, input.assigneeId);
-    const before = await this.db.task.findUniqueOrThrow({
-      where: { id: taskId },
-    });
-    const task = await this.db.task.update({
-      where: { id: taskId },
-      data: {
-        ...input,
-        dueDate: input.dueDate === undefined ? undefined : input.dueDate && new Date(input.dueDate),
-      },
-    });
+  update(taskId: number, teamId: number, input: UpdateTaskDto) {
+    if (input.assigneeId != null) this.#checkMember(teamId, input.assigneeId);
+    const before = this.db.tasks.get(taskId);
+    if (!before) throw new HttpError(404, 'Task not found');
+    const task = this.db.tasks.update(taskId, {
+      ...input,
+      dueDate: input.dueDate === undefined ? undefined : input.dueDate ? new Date(input.dueDate) : null,
+      updatedAt: new Date(),
+    }) as Task;
     if (task.assigneeId !== null && task.assigneeId !== before.assigneeId) {
-      await this.#notifyAssignee(task.id);
+      this.#notifyAssignee(task);
     }
     this.events.publish({ type: 'updated', projectId: task.projectId, taskId });
     return task;
   }
 
-  async remove(taskId: number) {
-    const task = await this.db.task.delete({ where: { id: taskId } });
+  remove(taskId: number) {
+    const task = this.db.tasks.delete(taskId);
+    if (!task) throw new HttpError(404, 'Task not found');
+    for (const attachment of this.db.attachments.filter((a) => a.taskId === taskId)) {
+      this.db.attachments.delete(attachment.id);
+    }
     this.events.publish({ type: 'deleted', projectId: task.projectId, taskId });
   }
 
-  async #checkMember(teamId: number, userId: number) {
-    const member = await this.db.membership.findUnique({
-      where: { userId_teamId: { userId, teamId } },
-    });
-    if (!member) throw new HttpError(422, 'The assignee is not in this team');
+  #checkMember(teamId: number, userId: number) {
+    if (!this.db.membership(userId, teamId)) {
+      throw new HttpError(422, 'The assignee is not in this team');
+    }
   }
 
-  // Queued for the worker; the request does not wait for the email.
-  async #notifyAssignee(taskId: number) {
-    const task = await this.db.task.findUniqueOrThrow({
-      where: { id: taskId },
-      include: { assignee: true, project: true },
-    });
-    if (!task.assignee) return;
-    await this.db.outboxEmail.create({
-      data: {
-        to: task.assignee.email,
-        subject: `Assigned: ${task.title}`,
-        body: `You were assigned "${task.title}" in ${task.project.name}.`,
-      },
+  // Queued for the email loop; the request does not wait for the email.
+  #notifyAssignee(task: Task) {
+    const assignee = task.assigneeId === null ? undefined : this.db.users.get(task.assigneeId);
+    const project = this.db.projects.get(task.projectId);
+    if (!assignee || !project) return;
+    this.db.outbox.insert({
+      to: assignee.email,
+      subject: `Assigned: ${task.title}`,
+      body: `You were assigned "${task.title}" in ${project.name}.`,
+      createdAt: new Date(),
+      sentAt: null,
     });
   }
 }

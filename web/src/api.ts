@@ -12,7 +12,7 @@ export function setToken(value: string | undefined): void {
 export const hasToken = () => token !== undefined;
 
 export const api = createClient<Api>({
-  baseUrl: import.meta.env.VITE_API_URL ?? 'http://localhost:3100',
+  baseUrl: import.meta.env.VITE_API_URL ?? '/api',
   headers: (): Record<string, string> => (token ? { authorization: `Bearer ${token}` } : {}),
 });
 

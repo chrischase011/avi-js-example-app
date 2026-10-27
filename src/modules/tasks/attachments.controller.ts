@@ -15,8 +15,8 @@ import { mkdir, rm } from 'node:fs/promises';
 import path from 'node:path';
 import { pipeline } from 'node:stream/promises';
 import * as v from 'valibot';
+import { Db } from '../../common/database.module.js';
 import { Config } from '../../config.js';
-import { PrismaClient } from '../../generated/prisma/client.js';
 import { AuthGuard } from '../auth/auth.guard.js';
 import { ProjectMemberGuard } from './project.guard.js';
 import { TaskParams } from './tasks.dto.js';
@@ -47,15 +47,14 @@ const download = { params: DownloadParams } satisfies RouteSchema;
 @UseGuards(AuthGuard, ProjectMemberGuard)
 export class AttachmentsController {
   constructor(
-    private readonly db: PrismaClient,
+    private readonly db: Db,
     private readonly config: Config,
   ) {}
 
   @Get('', { schema: list })
   list(ctx: RouteContext<typeof list>) {
-    return this.db.attachment.findMany({
-      where: { taskId: ctx.input.params.taskId },
-    });
+    const { taskId } = ctx.input.params;
+    return this.db.attachments.filter((a) => a.taskId === taskId);
   }
 
   /** multipart/form-data with one or more files: images, PDFs or text, up to 5 MB each. */
@@ -82,14 +81,13 @@ export class AttachmentsController {
         throw error;
       }
       saved.push(
-        await this.db.attachment.create({
-          data: {
-            taskId: ctx.input.params.taskId,
-            filename: part.filename,
-            mimeType: part.mimeType,
-            size,
-            storedAs,
-          },
+        this.db.attachments.insert({
+          taskId: ctx.input.params.taskId,
+          filename: part.filename,
+          mimeType: part.mimeType,
+          size,
+          storedAs,
+          createdAt: new Date(),
         }),
       );
     }
@@ -100,9 +98,7 @@ export class AttachmentsController {
   @Get('/:attachmentId', { schema: download })
   async download(ctx: RouteContext<typeof download>) {
     const { taskId, attachmentId } = ctx.input.params;
-    const attachment = await this.db.attachment.findFirst({
-      where: { id: attachmentId, taskId },
-    });
+    const attachment = this.db.attachments.find((a) => a.id === attachmentId && a.taskId === taskId);
     if (!attachment) throw new HttpError(404, 'Attachment not found');
     const file = path.join(path.resolve(this.config.UPLOAD_DIR), attachment.storedAs);
     return reply(createReadStream(file), {

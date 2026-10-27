@@ -1,6 +1,4 @@
 import assert from 'node:assert/strict';
-import { execSync } from 'node:child_process';
-import { rmSync } from 'node:fs';
 import { after, before, test } from 'node:test';
 import { createTestClient, type TestClient } from '@avijs/testing';
 import type { Api } from './api.gen.js';
@@ -9,10 +7,7 @@ import { createApp } from './app.js';
 let client: TestClient<Api>;
 
 before(async () => {
-  // A fresh database file for every run, created from the migrations.
-  process.env['DATABASE_URL'] = 'file:./test.db';
-  rmSync('test.db', { force: true });
-  execSync('npx prisma migrate deploy', { stdio: 'ignore', env: process.env });
+  // Every app starts with empty in-memory data.
   const app = await createApp();
   client = await createTestClient<Api>(app);
 });
