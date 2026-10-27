@@ -9,6 +9,7 @@
     "dev": "avi dev",
     "check": "avi check",
     "client": "avi client",
+    "postinstall": "prisma generate",
     "test": "avi build && node --test \"dist/**/*.test.js\"",
     "generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
