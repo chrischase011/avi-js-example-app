@@ -1,0 +1,27 @@
+{
+  "name": "avi-js-starter",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "avi build",
+    "start": "node dist/main.js",
+    "dev": "avi dev",
+    "check": "avi check",
+    "client": "avi client",
+    "test": "avi build && node --test \"dist/**/*.test.js\""
+  },
+  "dependencies": {
+    "@avijs/core": "^1.0.0-rc.4",
+    "valibot": "^1.5.0"
+  },
+  "devDependencies": {
+    "@avijs/cli": "^1.0.0-rc.4",
+    "@avijs/testing": "^1.0.0-rc.4",
+    "@types/node": "^22.0.0",
+    "typescript": "~6.0.3"
+  },
+  "engines": {
+    "node": ">=22.12"
+  }
+}
