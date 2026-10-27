@@ -1,0 +1,87 @@
+generator client {
+  provider            = "prisma-client"
+  output              = "../src/generated/prisma"
+  moduleFormat        = "esm"
+  importFileExtension = "js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model User {
+  id           Int          @id @default(autoincrement())
+  email        String       @unique
+  name         String
+  passwordHash String
+  createdAt    DateTime     @default(now())
+  memberships  Membership[]
+  assigned     Task[]       @relation("assignee")
+}
+
+model Team {
+  id        Int          @id @default(autoincrement())
+  name      String
+  createdAt DateTime     @default(now())
+  members   Membership[]
+  projects  Project[]
+}
+
+/// role: "owner" or "member"
+model Membership {
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId Int
+  team   Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  teamId Int
+  role   String @default("member")
+
+  @@id([userId, teamId])
+}
+
+model Project {
+  id        Int      @id @default(autoincrement())
+  name      String
+  team      Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  teamId    Int
+  createdAt DateTime @default(now())
+  tasks     Task[]
+}
+
+/// status: "todo", "doing" or "done"
+model Task {
+  id          Int          @id @default(autoincrement())
+  title       String
+  description String?
+  status      String       @default("todo")
+  dueDate     DateTime?
+  project     Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId   Int
+  assignee    User?        @relation("assignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  assigneeId  Int?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  attachments Attachment[]
+
+  @@index([projectId, status])
+}
+
+model Attachment {
+  id        Int      @id @default(autoincrement())
+  filename  String
+  mimeType  String
+  size      Int
+  storedAs  String
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  taskId    Int
+  createdAt DateTime @default(now())
+}
+
+/// Emails waiting for the worker. kind: "task-assigned", "welcome"
+model OutboxEmail {
+  id        Int       @id @default(autoincrement())
+  to        String
+  subject   String
+  body      String
+  createdAt DateTime  @default(now())
+  sentAt    DateTime?
+}

@@ -1,0 +1,8 @@
+node_modules/
+dist/
+.env
+uploads/
+dev.db*
+test.db*
+src/generated/
+*.tsbuildinfo

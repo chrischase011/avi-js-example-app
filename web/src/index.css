@@ -1,0 +1,84 @@
+:root {
+  font-family: system-ui, sans-serif;
+  color: #1d2433;
+  background: #f4f5f7;
+}
+body {
+  margin: 0;
+}
+main,
+.card {
+  max-width: 960px;
+  margin: 2rem auto;
+  padding: 0 1rem;
+}
+.card {
+  display: grid;
+  gap: 0.6rem;
+  max-width: 320px;
+  background: #fff;
+  padding: 1.5rem;
+  border-radius: 8px;
+}
+header {
+  display: flex;
+  align-items: baseline;
+  gap: 1rem;
+}
+header .link {
+  margin-left: auto;
+}
+input {
+  padding: 0.5rem;
+  border: 1px solid #c8ccd4;
+  border-radius: 4px;
+}
+button {
+  padding: 0.45rem 0.8rem;
+  border: 1px solid #c8ccd4;
+  border-radius: 4px;
+  background: #fff;
+  cursor: pointer;
+}
+button.active {
+  background: #1d2433;
+  color: #fff;
+}
+button.link {
+  border: 0;
+  background: none;
+  color: #2457c5;
+  padding: 0;
+}
+nav,
+.add {
+  display: flex;
+  gap: 0.5rem;
+  margin: 1rem 0;
+}
+.columns {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+}
+.column {
+  background: #e9ebef;
+  border-radius: 8px;
+  padding: 0.75rem;
+  min-height: 200px;
+}
+.task {
+  background: #fff;
+  border-radius: 6px;
+  padding: 0.6rem;
+  margin-bottom: 0.5rem;
+  display: grid;
+  gap: 0.3rem;
+}
+.task div {
+  display: flex;
+  gap: 0.3rem;
+}
+.error {
+  color: #b42318;
+}
